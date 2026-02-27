@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Scrabble Word Whiz - CSW24 Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;800;900&family=Lexend:wght@700;900&display=swap');
+        
+        body { 
+            font-family: 'Nunito', sans-serif; 
+            background: linear-gradient(135deg, #e0e7ff 0%, #f3e8ff 100%);
+            color: #374151; 
+            overflow: hidden; 
+        }
+        
+        .heading-font { font-family: 'Lexend', sans-serif; }
+
+        .app-container { width: 100%; height: 100dvh; background: #fafafa; }
+        @media (min-width: 500px) {
+            .app-container { 
+                width: min(450px, calc(92dvh * 9 / 16)); 
+                height: min(800px, 92dvh); 
+                border-radius: 2.5rem; 
+                box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 12px #ffffff, 0 0 0 16px #cbd5e1; 
+            }
+        }
+
+        /* Fun Tactile Tiles */
+        .scrabble-tile { 
+            display: inline-flex; align-items: center; justify-content: center; 
+            width: 56px; height: 56px; background: #fcd34d; 
+            border-radius: 12px; border-bottom: 6px solid #fbbf24; 
+            font-weight: 900; font-size: 1.8rem; text-transform: uppercase; 
+            color: #4338ca;
+            position: relative; 
+            font-family: 'Lexend', sans-serif;
+            transition: all 0.1s;
+        }
+        .scrabble-tile.used { 
+            background-color: #e5e7eb !important; border-bottom-color: #d1d5db !important; 
+            color: #9ca3af !important; transform: translateY(2px); border-bottom-width: 4px;
+        }
+        .tile-value { position: absolute; bottom: 3px; right: 5px; font-size: 0.65rem; font-family: 'Nunito', sans-serif; font-weight: 800; color: inherit; }
+        
+        /* Cuter 3D Buttons */
+        .btn-3d {
+            transition: all 0.1s; border-bottom-width: 6px;
+        }
+        .btn-3d:active {
+            transform: translateY(4px); border-bottom-width: 2px; margin-bottom: 4px;
+        }
+
+        .shake { animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both; }
+        @keyframes shake { 10%, 90% { transform: translate3d(-2px, 0, 0); } 20%, 80% { transform: translate3d(3px, 0, 0); } 30%, 50%, 70% { transform: translate3d(-5px, 0, 0); } 40%, 60% { transform: translate3d(5px, 0, 0); } }
+        
+        .found-word-tag { background: #d1fae5; color: #047857; border: 2px solid #34d399; padding: 4px 12px; border-radius: 99px; font-size: 0.85rem; font-weight: 800; display: inline-block; margin: 3px; text-transform: uppercase; box-shadow: 0 2px 0 #34d399; }
+        .missing-word-tag { background: #fee2e2; color: #b91c1c; border: 2px solid #f87171; padding: 4px 12px; border-radius: 99px; font-size: 0.85rem; font-weight: 800; display: inline-block; margin: 3px; text-transform: uppercase; box-shadow: 0 2px 0 #f87171;}
+        
+        .timer-bar-transition { transition: width 1s linear, background-color 0.3s ease; }
+        
+        /* Custom scrollbar */
+        .screen-scroll::-webkit-scrollbar { width: 8px; }
+        .screen-scroll::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 99px; }
+    </style>
+</head>
+<body class="min-h-screen w-full flex items-center justify-center sm:p-4">
+
+    <div id="app" class="app-container overflow-hidden relative flex flex-col">
+        <!-- Header -->
+        <div class="bg-indigo-500 p-4 text-white text-center flex-shrink-0 z-10 border-b-4 border-indigo-600">
+            <h1 class="text-2xl font-black flex items-center justify-center gap-2 heading-font tracking-wide">
+                <span class="text-3xl drop-shadow-md">🔠</span> Scrabble Whiz
+            </h1>
+            <p class="text-indigo-100 text-[10px] uppercase font-black tracking-widest mt-1">CSW24 Edition</p>
+        </div>
+
+        <!-- Welcome Screen -->
+        <div id="welcome-screen" class="p-6 flex-1 flex flex-col justify-center items-center bg-indigo-50/50">
+            <div class="relative w-40 h-40 bg-[#fcd34d] rounded-3xl border-b-8 border-[#fbbf24] shadow-xl flex items-center justify-center mb-8 transform -rotate-6 hover:rotate-0 transition-transform duration-300">
+                <span class="text-8xl font-black text-indigo-900 heading-font">W</span>
+                <span class="absolute bottom-3 right-4 text-3xl font-black text-indigo-900">4</span>
+            </div>
+            
+            <div class="w-full max-w-sm mb-8 space-y-3">
+                <label class="block text-center text-indigo-400 font-black uppercase tracking-widest text-sm">Who's Playing?</label>
+                <input type="text" id="player-name-input" class="w-full p-4 border-4 border-indigo-100 rounded-3xl text-center text-2xl font-black text-indigo-800 placeholder-indigo-300 focus:border-indigo-400 focus:outline-none transition-colors shadow-inner" placeholder="Your Name" autocomplete="off">
+            </div>
+
+            <button onclick="goToSetup()" class="btn-3d w-full max-w-sm bg-emerald-400 border-emerald-500 text-white py-5 rounded-3xl font-black text-2xl shadow-lg flex justify-center items-center gap-2">
+                Let's Play! <span class="text-3xl">🚀</span>
+            </button>
+        </div>
+
+        <!-- Setup Screen -->
+        <div id="setup-screen" class="p-5 flex-1 flex flex-col hidden screen-scroll overflow-y-auto bg-gray-50">
+            
+            <div class="flex items-center gap-3 bg-white p-3 rounded-2xl shadow-sm border-2 border-gray-100 mb-6">
+                <div class="bg-indigo-100 text-2xl p-2 rounded-xl">👋</div>
+                <div>
+                    <div class="text-[10px] text-gray-400 font-black uppercase tracking-widest leading-none">Welcome back,</div>
+                    <div id="setup-player-name" class="font-black text-indigo-800 text-lg leading-none mt-1">Player</div>
+                </div>
+            </div>
+
+            <div id="main-category-section">
+                <h3 class="text-gray-400 text-xs font-black mb-3 uppercase tracking-widest text-center">Choose Your Challenge</h3>
+                <div class="grid grid-cols-2 gap-4">
+                    <button onclick="selectCategory('2', '2 Letters')" class="btn-3d bg-white border-2 border-gray-200 border-b-6 border-b-gray-300 p-6 rounded-[2rem] text-center cursor-pointer hover:bg-indigo-50 hover:border-indigo-200 flex flex-col items-center justify-center aspect-square shadow-sm">
+                        <div class="text-6xl mb-3 drop-shadow-sm">✌️</div>
+                        <div class="font-black text-gray-700 text-lg">2 Letters</div>
+                    </button>
+                    <button onclick="selectCategory('3', '3 Letters')" class="btn-3d bg-white border-2 border-gray-200 border-b-6 border-b-gray-300 p-6 rounded-[2rem] text-center cursor-pointer hover:bg-indigo-50 hover:border-indigo-200 flex flex-col items-center justify-center aspect-square shadow-sm">
+                        <div class="text-6xl mb-3 drop-shadow-sm">🤟</div>
+                        <div class="font-black text-gray-700 text-lg">3 Letters</div>
+                    </button>
+                    <button onclick="selectCategory('4', '4 Letters')" class="btn-3d bg-white border-2 border-gray-200 border-b-6 border-b-gray-300 p-6 rounded-[2rem] text-center cursor-pointer hover:bg-indigo-50 hover:border-indigo-200 flex flex-col items-center justify-center aspect-square shadow-sm">
+                        <div class="text-6xl mb-3 drop-shadow-sm">🖖</div>
+                        <div class="font-black text-gray-700 text-lg">4 Letters</div>
+                    </button>
+                    <button onclick="selectCategory('Bingo', 'Bingo Stems')" class="btn-3d bg-white border-2 border-gray-200 border-b-6 border-b-gray-300 p-6 rounded-[2rem] text-center cursor-pointer hover:bg-amber-50 hover:border-amber-200 flex flex-col items-center justify-center aspect-square shadow-sm">
+                        <div class="text-6xl mb-3 drop-shadow-sm">🎰</div>
+                        <div class="font-black text-amber-600 text-lg">Bingo</div>
+                    </button>
+                </div>
+            </div>
+
+            <div id="sub-category-section" class="hidden flex-1 flex flex-col">
+                <button onclick="backToCategories()" class="text-gray-400 hover:text-indigo-600 font-black mb-6 flex items-center gap-2 text-sm uppercase tracking-wider transition-colors w-fit"><span class="text-xl">⬅️</span> Go Back</button>
+                
+                <div class="bg-white border-2 border-indigo-100 p-6 rounded-3xl mb-6 shadow-sm">
+                    <label id="selected-cat-name" class="block text-indigo-400 font-black mb-3 uppercase tracking-widest text-xs text-center"></label>
+                    <select id="subcat-select" class="w-full p-4 border-2 border-gray-100 rounded-2xl font-black text-lg bg-gray-50 text-indigo-900 focus:border-indigo-400 outline-none cursor-pointer"></select>
+                </div>
+                
+                <button onclick="startGame()" class="btn-3d w-full bg-indigo-500 border-indigo-600 text-white py-5 rounded-3xl font-black text-2xl mt-auto shadow-md">
+                    Start Game 🎯
+                </button>
+            </div>
+        </div>
+
+        <!-- Game Screen -->
+        <div id="game-screen" class="p-4 flex-1 flex flex-col hidden relative bg-gray-50">
+            <div id="pause-overlay" class="absolute inset-0 bg-rose-500/90 backdrop-blur-sm z-40 hidden flex-col items-center justify-center text-white rounded-b-3xl">
+                <span class="text-8xl mb-4 drop-shadow-lg">⏸️</span>
+                <span class="text-4xl font-black tracking-widest heading-font">PAUSED</span>
+            </div>
+            
+            <!-- Cute Top Bar -->
+            <div class="flex justify-between items-center mb-4 bg-white p-3 rounded-3xl shadow-sm border-2 border-gray-100">
+                <div class="flex items-center gap-2 max-w-[50%]">
+                    <div class="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center text-xl shadow-inner">👤</div>
+                    <div class="truncate font-black text-indigo-900 text-sm" id="game-player-name">Player</div>
+                </div>
+                <div class="text-right">
+                    <div class="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none">Score</div>
+                    <div id="score" class="text-indigo-600 text-3xl font-black heading-font leading-none mt-1">0</div>
+                </div>
+            </div>
+            
+            <div class="flex justify-between items-end mb-2 px-2">
+                <button onclick="exitToHome()" class="text-gray-400 hover:text-rose-500 font-black text-xs uppercase tracking-widest transition-colors">🏠 Exit</button>
+                <div id="progress-display" class="text-indigo-400 text-sm font-black uppercase tracking-widest bg-indigo-50 px-3 py-1 rounded-full">0 / 0</div>
+                <button onclick="togglePause()" class="text-gray-400 hover:text-indigo-500 font-black text-xs uppercase tracking-widest transition-colors">⏸️ Pause</button>
+            </div>
+            
+            <div class="w-full bg-gray-200 h-3 rounded-full mb-6 overflow-hidden shadow-inner border border-gray-100">
+                <div id="timer-bar" class="bg-gradient-to-r from-indigo-400 to-indigo-600 h-full w-full timer-bar-transition rounded-full"></div>
+            </div>
+            
+            <div id="found-words-list" class="flex flex-wrap justify-center content-center min-h-[50px] mb-4"></div>
+            
+            <div class="flex-1 flex flex-col justify-center mb-4">
+                <div id="tile-display" class="flex flex-wrap justify-center gap-2 mb-6"></div>
+                <input type="text" id="answer-input" class="w-full max-w-[250px] mx-auto text-center text-3xl font-black uppercase tracking-widest outline-none border-b-4 border-gray-300 focus:border-indigo-500 pb-2 bg-transparent text-indigo-900 placeholder-gray-300" autocomplete="off" placeholder="____">
+                <div id="feedback" class="text-center h-6 mt-3 font-black text-sm uppercase tracking-wide"></div>
+            </div>
+            
+            <div class="grid grid-cols-4 gap-3 mt-auto">
+                <button onclick="checkAnswer()" class="btn-3d col-span-2 bg-emerald-400 border-emerald-500 text-white font-black py-4 rounded-3xl shadow-sm text-xl tracking-wider">SUBMIT</button>
+                <button onclick="useHint()" class="btn-3d col-span-1 bg-amber-400 border-amber-500 text-white py-4 rounded-3xl shadow-sm text-3xl flex items-center justify-center">💡</button>
+                <button onclick="skipWord()" class="btn-3d col-span-1 bg-gray-300 border-gray-400 text-gray-600 py-4 rounded-3xl shadow-sm text-3xl flex items-center justify-center">⏭️</button>
+            </div>
+        </div>
+
+        <!-- Result Screen -->
+        <div id="result-screen" class="p-6 text-center flex-1 flex flex-col justify-center hidden bg-indigo-50/50">
+            <div class="text-8xl mb-2 animate-bounce drop-shadow-xl">🎉</div>
+            <h2 class="text-3xl font-black text-gray-800 mb-1 heading-font">Great Job,</h2>
+            <h3 id="result-player-name" class="text-4xl font-black text-indigo-600 mb-8 heading-font">Player!</h3>
+            
+            <div class="grid grid-cols-3 gap-3 mb-8">
+                <div class="bg-white border-2 border-indigo-100 p-4 rounded-3xl shadow-sm flex flex-col justify-center">
+                    <div class="text-[10px] font-black text-indigo-400 tracking-widest uppercase mb-1">Score</div>
+                    <div id="final-score" class="text-3xl font-black text-indigo-600 heading-font">0</div>
+                </div>
+                <div class="bg-white border-2 border-emerald-100 p-4 rounded-3xl shadow-sm flex flex-col justify-center">
+                    <div class="text-[10px] font-black text-emerald-400 tracking-widest uppercase mb-1">Sets</div>
+                    <div id="final-solved" class="text-3xl font-black text-emerald-500 heading-font">0</div>
+                </div>
+                <div class="bg-white border-2 border-amber-100 p-4 rounded-3xl shadow-sm flex flex-col justify-center">
+                    <div class="text-[10px] font-black text-amber-400 tracking-widest uppercase mb-1">Accuracy</div>
+                    <div id="final-accuracy" class="text-3xl font-black text-amber-500 heading-font">0%</div>
+                </div>
+            </div>
+            
+            <div class="mt-auto space-y-3">
+                <button onclick="showStudySheet()" id="study-sheet-btn" class="btn-3d w-full bg-amber-100 border-amber-300 text-amber-700 py-4 rounded-3xl font-black hidden shadow-sm text-lg flex items-center justify-center gap-2">
+                    <span class="text-2xl">📖</span> Review Study Sheet
+                </button>
+                <button onclick="resetApp()" class="btn-3d w-full bg-indigo-500 border-indigo-600 text-white py-4 rounded-3xl font-black shadow-sm text-xl flex items-center justify-center gap-2">
+                    <span class="text-2xl">🏠</span> Play Again
+                </button>
+            </div>
+        </div>
+
+        <!-- Study Modal -->
+        <div id="study-modal" class="absolute inset-0 bg-gray-50 z-50 hidden flex flex-col p-6 overflow-y-auto screen-scroll rounded-b-3xl">
+            <div class="flex justify-between items-center mb-6 border-b-2 border-gray-200 pb-4 bg-gray-50 sticky top-0 z-10 pt-2">
+                <h2 class="text-2xl font-black text-indigo-900 flex items-center gap-2 heading-font"><span class="text-3xl">📚</span> Missed Words</h2>
+                <button onclick="closeStudySheet()" class="text-4xl text-gray-400 hover:text-rose-500 transition-colors bg-white w-10 h-10 rounded-full flex items-center justify-center shadow-sm border border-gray-100">&times;</button>
+            </div>
+            <div id="study-content" class="space-y-4 pb-10"></div>
+        </div>
+    </div>
+
+    <script>
+        const CSW24 = {
+            "2": ["AA","AB","AD","AE","AG","AH","AI","AL","AM","AN","AR","AS","AT","AW","AX","AY","BA","BE","BI","BO","BY","CH","DA","DE","DI","DO","EA","ED","EE","EF","EH","EL","EM","EN","ER","ES","ET","EW","EX","FA","FE","FY","GI","GO","GU","HA","HE","HI","HM","HO","ID","IF","IN","IO","IS","IT","JA","JO","KA","KI","KO","KY","LA","LI","LO","MA","ME","MI","MM","MO","MU","MY","NA","NE","NO","NU","NY","OB","OD","OE","OF","OH","OI","OK","OM","ON","OO","OP","OR","OS","OU","OW","OX","OY","PA","PE","PI","PO","QI","RE","SH","SI","SO","ST","TA","TE","TI","TO","UG","UH","UM","UN","UP","UR","US","UT","WE","WO","XI","XU","YA","YE","YO","YU","ZA","ZE","ZO"],
+            "3": ["AAH","AAL","AAS","ABA","ABB","ABS","ABY","ACE","ACH","ACK","ACT","ADD","ADO","ADS","ADZ","AFF","AFT","AGA","AGE","AGO","AGS","AHA","AHI","AHS","AIA","AID","AIL","AIM","AIN","AIR","AIS","AIT","AJI","AKA","AKE","ALA","ALB","ALE","ALL","ALP","ALS","ALT","ALU","AMA","AME","AMI","AMP","AMU","ANA","AND","ANE","ANI","ANN","ANS","ANT","ANY","APE","APO","APP","APT","ARB","ARC","ARD","ARE","ARF","ARK","ARM","ARO","ARS","ART","ARY","ASH","ASK","ASP","ASS","ATE","ATS","ATT","AUA","AUE","AUF","AUK","AVA","AVE","AVI","AVO","AWA","AWE","AWK","AWL","AWN","AXE","AYE","AYS","AYU","AZO","BAA","BAC","BAD","BAE","BAG","BAH","BAL","BAM","BAN","BAO","BAP","BAR","BAS","BAT","BAW","BAY","BED","BEE","BEG","BEL","BEN","BES","BET","BEY","BEZ","BIB","BID","BIG","BIN","BIO","BIS","BIT","BIZ","BOA","BOB","BOD","BOG","BOH","BOI","BOK","BON","BOO","BOP","BOR","BOS","BOT","BOW","BOX","BOY","BRA","BRO","BRR","BRU","BUB","BUD","BUG","BUM","BUN","BUR","BUS","BUT","BUY","BYE","BYS","CAA","CAB","CAD","CAF","CAG","CAL","CAM","CAN","CAP","CAR","CAT","CAW","CAY","CAZ","CEE","CEL","CEP","CHA","CHE","CHI","CID","CIG","CIS","CIT","CLY","COB","COD","COG","COL","CON","COO","COP","COR","COS","COT","COW","COX","COY","COZ","CRU","CRY","CUB","CUD","CUE","CUM","CUP","CUR","CUT","CUZ","CWM","DAB","DAD","DAE","DAG","DAH","DAK","DAL","DAM","DAN","DAP","DAS","DAW","DAY","DEB","DEE","DEF","DEG","DEI","DEL","DEN","DEP","DEV","DEW","DEX","DEY","DIB","DID","DIE","DIF","DIG","DIM","DIN","DIP","DIS","DIT","DIV","DOB","DOC","DOD","DOE","DOF","DOG","DOH","DOL","DOM","DON","DOO","DOP","DOR","DOS","DOT","DOW","DOX","DOY","DRY","DSO","DUB","DUD","DUE","DUG","DUH","DUI","DUM","DUN","DUO","DUP","DUR","DUX","DYE","DZO","EAN","EAR","EAS","EAT","EAU","EBB","ECH","ECO","ECU","EDH","EDS","EEK","EEL","EEN","EEW","EFF","EFS","EFT","EGG","EGO","EHS","EIK","EKE","ELD","ELF","ELK","ELL","ELM","ELS","ELT","EME","EMO","EMS","EMU","END","ENE","ENG","ENS","EON","ERA","ERE","ERF","ERG","ERK","ERM","ERN","ERR","ERS","ESS","EST","ETA","ETH","EUK","EVE","EVO","EWE","EWK","EWT","EWW","EXO","EYE","FAA","FAB","FAD","FAE","FAG","FAH","FAM","FAN","FAP","FAR","FAS","FAT","FAV","FAW","FAY","FED","FEE","FEG","FEH","FEM","FEN","FER","FES","FET","FEU","FEW","FEY","FEZ","FIB","FID","FIE","FIG","FIL","FIN","FIR","FIT","FIX","FIZ","FLU","FLY","FOB","FOE","FOG","FOH","FON","FOO","FOP","FOR","FOU","FOX","FOY","FRA","FRO","FUB","FUD","FUG","FUM","FUN","FUR","GAB","GAD","GAE","GAG","GAK","GAL","GAM","GAN","GAP","GAR","GAS","GAT","GAU","GAW","GAY","GED","GEE","GEL","GEM","GEN","GEO","GER","GET","GEY","GHI","GIB","GID","GIE","GIF","GIG","GIN","GIO","GIP","GIS","GIT","GJU","GNU","GOA","GOB","GOD","GOE","GON","GOO","GOR","GOS","GOT","GOV","GOX","GRR","GUB","GUE","GUL","GUM","GUN","GUP","GUR","GUS","GUT","GUV","GUY","GYM","GYP","HAD","HAE","HAG","HAH","HAJ","HAM","HAN","HAO","HAP","HAS","HAT","HAW","HAY","HEH","HEM","HEN","HEP","HER","HES","HET","HEW","HEX","HEY","HIC","HID","HIE","HIM","HIN","HIP","HIS","HIT","HMM","HOA","HOB","HOC","HOD","HOE","HOG","HOH","HOI","HOM","HON","HOO","HOP","HOS","HOT","HOW","HOX","HOY","HUB","HUE","HUG","HUH","HUI","HUM","HUN","HUP","HUT","HYE","HYP","ICE","ICH","ICK","ICY","IDE","IDS","IFF","IFS","IGG","ILK","ILL","IMP","ING","INK","INN","INS","INT","ION","IOS","IRE","IRK","ISH","ISM","ISO","ITA","ITS","IWI","IVY","JAB","JAG","JAI","JAK","JAM","JAP","JAR","JAW","JAY","JEE","JET","JEU","JIB","JIG","JIN","JIZ","JOB","JOE","JOG","JOL","JOR","JOT","JOW","JOY","JUD","JUG","JUN","JUS","JUT","KAB","KAE","KAF","KAI","KAK","KAM","KAS","KAT","KAW","KAY","KEA","KEB","KED","KEF","KEG","KEN","KEP","KET","KEX","KEY","KHI","KID","KIF","KIN","KIP","KIR","KIS","KIT","KOA","KOB","KOI","KON","KOP","KOR","KOS","KOW","KUE","KYE","KYU","LAB","LAC","LAD","LAG","LAH","LAM","LAP","LAR","LAS","LAT","LAV","LAW","LAX","LAY","LEA","LED","LEE","LEG","LEI","LEK","LEP","LEU","LEV","LEW","LEX","LEY","LIB","LID","LIE","LIG","LIN","LIP","LIS","LIT","LOB","LOC","LOD","LOG","LO","LOP","LOR","LOS","LOT","LOU","LOW","LOX","LOY","LUD","LUG","LUM","LUN","LUR","LUV","LUX","LUZ","LYE","LYM","MAA","MAC","MAD","MAE","MAG","MAK","MAL","MAM","MAN","MAP","MAR","MAS","MAT","MAW","MAX","MAY","MED","MEE","MEG","MEH","MEL","MEM","MEN","MES","MET","MEU","MEW","MHO","MIB","MIC","MID","MIG","MIL","MIM","MIR","MIS","MIX","MIZ","MMM","MNA","MOA","MOB","MOC","MOD","MOE","MOG","MOI","MOL","MOM","MON","MOO","MOP","MOR","MOS","MOT","MOU","MOW","MOY","MOZ","MUD","MUG","MUM","MUN","MUS","MUT","MUX","MYC","NAB","NAE","NAG","NAH","NAM","NAN","NAP","NAS","NAT","NAV","NAW","NAY","NEB","NED","NEE","NEF","NEG","NEK","NEP","NET","NEW","NIB","NID","NIE","NIL","NIM","NIP","NIS","NIT","NIX","NOB","NOD","NOG","NOH","NOM","NON","NOO","NOR","NOS","NOT","NOW","NOX","NOY","NTH","NUB","NUG","NUN","NUR","NUS","NUT","NYE","NYM","NYS","OAF","OAK","OAR","OAT","OBA","OBE","OBI","OBO","OBS","OCA","OCH","ODA","ODD","ODE","ODS","OES","OFF","OFT","OHM","OHO","OHS","OIK","OIL","OIS","OKA","OKE","OLD","OLE","OLM","OMA","OMS","ONE","ONO","ONS","ONY","OOF","OOH","OOM","OON","OOP","OOR","OOS","OOT","OPE","OPS","OPT","ORA","ORB","ORC","ORD","ORE","ORF","ORG","ORS","ORT","OSE","OUD","OUK","OUP","OUR","OUS","OUT","OVA","OWE","OWL","OWN","OWO","OWT","OXO","OXY","OYE","OYS","PAC","PAD","PAH","PAK","PAL","PAM","PAN","PAP","PAR","PAS","PAT","PAU","PAV","PAW","PAX","PAY","PEA","PEC","PED","PEE","PEG","PEH","PEL","PEN","PEP","PER","PES","PET","PEW","PHI","PHO","PHT","PIA","PIC","PIE","PIG","PIN","PIP","PIR","PIS","PIT","PIU","PIX","PLU","PLY","POA","POD","POH","POI","POL","POM","POO","POP","POR","POS","POT","POW","POX","POZ","PRE","PRO","PRY","PSI","PST","PUB","PUD","PUG","PUH","PUL","PUN","PUP","PUR","PUS","PUT","PUY","PWN","PYA","PYE","PYX","QAT","QIN","QIS","QUA","RAD","RAG","RAH","RAI","RAJ","RAM","RAN","RAP","RAS","RAT","RAV","RAW","RAX","RAY","REB","REC","RED","REE","REF","REG","REH","REI","REM","REN","REO","REP","RES","RET","REV","REW","REX","REZ","RHO","RHY","RIA","RIB","RID","RIF","RIG","RIM","RIN","RIP","RIT","RIZ","ROB","ROC","ROD","ROE","ROK","ROM","ROO","ROT","ROW","RUB","RUC","RUD","RUE","RUG","RUM","RUN","RUT","RYA","RYE","RYU","SAB","SAC","SAD","SAE","SAG","SAI","SAL","SAM","SAN","SAP","SAR","SAT","SAU","SAV","SAW","SAX","SAY","SAZ","SEA","SEC","SED","SEE","SEG","SEI","SEL","SEN","SER","SET","SEV","SEW","SEX","SEY","SEZ","SHA","SHE","SHH","SHO","SHY","SIB","SIC","SIF","SIG","SIK","SIM","SIN","SIP","SIR","SIS","SIT","SIX","SKA","SKI","SKY","SLY","SMA","SNY","SOB","SOC","SOD","SOG","SOH","SOL","SOM","SON","SOP","SOS","SOT","SOU","SOV","SOW","SOX","SOY","SOZ","SPA","SPY","SRI","STY","SUB","SUD","SUE","SUG","SUI","SUK","SUM","SUN","SUP","SUQ","SUR","SUS","SWY","SYE","SYN","TAB","TAD","TAE","TAG","TAI","TAJ","TAK","TAM","TAN","TAO","TAP","TAR","TAS","TAT","TAU","TAV","TAW","TAX","TAY","TEA","TEC","TED","TEE","TEF","TEG","TEL","TEN","TES","TET","TEW","TEX","THE","THO","THY","TIC","TID","TIE","TIG","TIK","TIL","TIN","TIP","TIS","TIT","TIX","TIZ","TOC","TOD","TOE","TOG","TOM","TON","TOO","TOP","TOR","TOT","TOW","TOY","TRY","TSK","TUB","TUG","TUI","TUM","TUN","TUP","TUT","TUX","TWA","TWO","TWP","TYE","TYG","UDO","UDS","UEY","UFO","UGH","UGS","UKE","ULE","ULU","UME","UMM","UMP","UMS","UMU","UNI","UNS","UPO","UPS","URB","URD","URE","URN","URP","USE","UTA","UTE","UTS","UTU","UVA","UWU","VAC","VAE","VAG","VAN","VAR","VAS","VAT","VAU","VAV","VAW","VAX","VEE","VEG","VET","VEX","VIA","VID","VIE","VIG","VIM","VIN","VIS","VLY","VOE","VOG","VOL","VOM","VOR","VOW","VOX","VUG","VUM","WAB","WAD","WAE","WAG","WAI","WAN","WAP","WAR","WAS","WAT","WAW","WAX","WAY","WAZ","WEB","WED","WEE","WEM","WEN","WET","WEX","WEY","WHA","WHO","WHY","WIG","WIN","WIS","WIT","WIZ","WOE","WOF","WOG","WOK","WON","WOO","WOP","WOS","WOT","WOW","WOX","WRY","WUD","WUS","WUZ","WYE","WYN","XED","XIS","YAD","YAE","YAG","YAH","YAK","YAM","YAP","YAR","YAS","YAW","YAY","YEA","YEH","YEN","YEP","YER","YES","YET","YEW","YEX","YEZ","YGO","YID","YIN","YIP","YOB","YOD","YOK","YOM","YON","YOU","YOW","YUG","YUK","YUM","YUP","YUS","ZAG","ZAP","ZAS","ZAX","ZEA","ZED","ZEE","ZEK","ZEL","ZEN","ZEP","ZEX","ZHO","ZIG","ZIN","ZIP","ZIT","ZIZ","ZOA","ZOL","ZOO","ZOS","ZUZ","ZZZ"],
+            "4": `AAHS AGUE ALUM ARED AWED BANS BENE BLAG BOOH BROD BUZZ CASH CHIZ CODE COTT
+AALS AHED ALUS AREG AWEE BANT BENI BLAH BOOK BROG BYDE CASK CHOC CODS COUP
+ABAC AHEM AMAH ARES AWES BAOS BENJ BLAM BOOL BROO BYES CAST CHOG COED COUR
+ABAS AHIS AMAS ARET AWFY BAPS BENS BLAT BOOM BROS BYKE CATE CHON COFF COVE
+ABBA AHOY AMBO AREW AWKS BAPU BENT BLAW BOON BROW BYRE CATH CHOP COFT COWK
+ABBE AIAS AMEN ARFS AWLS BARB BERE BLAY BOOR BRRR BYRL CATS CHOU COGS COWL
+ABBS AIDA AMES ARGH AWNS BARD BERG BLEB BOOS BRUH BYTE CAUF CHOW COHO COWP
+ABED AIDE AMIA ARIA AWNY BARE BERK BLED BOOT BRUS CAAS CAUK CHUB COIF COWS
+ABER AIDS AMID ARID AWOL BARF BERM BLEE BOPO BRUT CABA CAUL CHUG COIL COWY
+ABET AIGA AMIE ARIE AWRY BARK BEST BLET BOPS BRUV CABS CAUM CHUM COIN COXA
+ABID AILS AMIN ARIL AXAL BARM BETA BLEW BORA BRUX CACA CAUP CHUR COIR COXY
+ABLE AIMS AMIR ARIS AXED BARN BETE BLEY BORD BUAT CACK CAVA CHUT COIT COYS
+ABLY AINE AMIS ARKS AXEL BARP BETH BLIN BORE BUBA CADE CAVE CIAO COKE COZE
+ABRI AINS AMLA ARLE AXES BARS BETS BLIP BORK BUBO CADI CAVY CIDE COKY COZY
+ABUT AIRN AMMO ARMS AXIL BASA BEVY BLIT BORM BUBS CADS CAWK CIDS COLA CRAB
+ABYE AIRS AMOK ARMY AXIS BASE BEYS BLOB BORN BUBU CAFE CAWS CIEL COLD CRAG
+ABYS AIRT AMPS ARNA AXLE BASH BHAI BLOC BORS BUCK CAFF CAYS CIGS COLE CRAM
+ACAI AIRY AMUS AROS AXON BASK BHAT BLOG BORT BUDA CAFS CAZH CILL COLL CRAN
+ACCA AITS AMYL AROW AYAH BASS BHEL BLOT BOSH BUDI CAGE CEAS CINE COLS CRAP
+ACED AITU ANAL ARPA AYES BAST BHUT BLOW BOSK BUDO CAGS CECA CINQ COLT CRAW
+ACER AJAR ANAN ARSE AYIN BATE BIAS BLUB BOSS BUDS CAGY CEDE CION COLY CRAY
+ACES AJEE ANAS ARSY AYRE BATH BIBB BLUD BOTA BUFF CAID CEDI CIRE COMA CRED
+ACHE AJIS ANCE ARTI AYUS BATS BIBE BLUE BOTE BUFO CAIN CEES CIRL COMB CREE
+ACHY AKAS ANDS ARTS AZAN BATT BIBS BLUR BOTH BUGS CAKE CEIL CIST COME CREM
+ACID AKED ANES ARTY AZON BAUD BICE BOAB BOTS BUHL CAKY CELL CITE COMM CREW
+ACME AKEE ANEW ARUM AZYM BAUK BIDE BOAK BOTT BUHR CALF CELS CITO COMP CRIA
+ACNE AKES ANGA ARVO BAAL BAUR BIDI BOAR BOUK BUIK CALK CELT CITS COMS CRIB
+ACRE AKIN ANIL ARYL BAAS BAWD BIDS BOAS BOUN BUJO CALL CENS CITY COND CRIM
+ACRO ALAE ANIS ASAR BABA BAWK BIEN BOAT BOUT BUKE CALM CENT CIVE CONE CRIS
+ACTA ALAN ANKH ASCI BABE BAWL BIER BOBA BOWL BULB CALO CEPE CLAD CONF CRIT
+ACTS ALAP ANNA ASEA BABU BAWN BIFF BOBO BOWR BULK CALP CEPS CLAG CONI CROC
+ACYL ALAR ANNO ASHY BABY BAWR BIGA BOBS BOWS BULL CALS CERE CLAM CONK CROG
+ADAW ALAS ANNS ASKS BACH BAWS BIGG BOCK BOXY BUMF CALX CERO CLAN CONN CRON
+ADDS ALAY ANOA ASPS BACK BAYE BIGS BODE BOYF BUMP CAMA CERT CLAP CONS CROP
+ADDY ALBA ANON ATAP BACS BAYS BIKE BODS BOYG BUMS CAME CESS CLAT CONY CROW
+ADIT ALBE ANOW ATES BADE BAYT BILE BODY BOYO BUNA CAMI CETE CLAW COOF CRUD
+ADOS ALBS ANSA ATMA BADS BAZZ BILK BOEP BOYS BUND CAMO CHAD CLAY COOK CRUE
+ADRY ALCO ANTA ATOC BAEL BEAD BILL BOET BOZO BUNG CAMP CHAI CLEF COOL CRUS
+ADZE ALEC ANTE ATOK BAES BEAK BIMA BOFF BRAD BUNK CAMS CHAL CLEG COOM CRUX
+AEON ALEE ANTI ATOM BAFF BEAL BIND BOGS BRAE BUNN CANE CHAM CLEM COON CUBE
+AERO ALEF ANTS ATOP BAFT BEAM BINE BOGY BRAG BUNS CANG CHAO CLEW COOP CUBS
+AERY ALES ANUS ATUA BAGH BEAN BING BOHO BRAK BUNT CANN CHAP CLIP COOS CUCK
+AESC ALEW APAY AUAS BAGS BEAR BINK BOHS BRAN BUOY CANS CHAR CLIT COOT CUDS
+AFAR ALFA APED AUFS BAHT BEAT BINS BOIL BRAP BURA CANT CHAS CLOD COPE CUED
+AFFY ALGA APER AUGH BAHU BEAU BIOG BOIS BRAS BURB CANY CHAT CLOG COPI CUES
+AFRO ALGO APES AUKS BAIL BECK BIOS BOKE BRAT BURD CAPA CHAV CLON COPS CUFF
+AGAR ALIF APEX AULA BAIT BEDE BIRD BOKO BRAW BURG CAPE CHAW CLOP COPY CUIF
+AGAS ALIT APOD AULD BAJU BEDS BIRK BOKS BRAY BURK CAPH CHAY CLOT CORD CUIT
+AGED ALKO APOS AUNE BAKE BEDU BIRL BOLA BRED BURL CAPI CHEF CLOU CORE CUKE
+AGEE ALKY APPS AUNT BALD BEEF BIRO BOLD BREE BURN CAPO CHEM CLOW CORF CULL
+AGEN ALLS APSE AURA BALE BEEN BIRR BOLE BREI BURP CAPS CHER CLOY CORK CULM
+AGER ALLY APSO AUTO BALK BEEP BISE BOLL BREN BURR CARB CHEW CLUB CORM CULT
+AGES ALMA APTS AVAL BALL BEER BISH BOLO BRER BURS CARD CHEZ CLUE CORN CUMS
+AGGY ALME AQUA AVAS BALM BEES BISK BOLT BREW BURY CARE CHIA COAL CORS CUNT
+AGHA ALMS ARAK AVEL BALS BEET BIST BOMA BREY BUSH CARK CHIB COAT CORY CUPS
+AGIN ALOD ARAR AVER BALU BEGO BITE BOMB BRIE BUSK CARL CHIC COAX COSE CURB
+AGIO ALOE ARBA AVES BAMS BEGS BITO BONA BRIG BUSS CARN CHID COBB COSH CURD
+AGLU ALOO ARBS AVID BANC BEIN BITS BOND BRIK BUST CARP CHIK COBS COSS CURE
+AGLY ALOW ARCH AVIS BAND BELL BITT BONE BRIM BUSY CARR CHIN COCA COST CURF
+AGMA ALPS ARCO AVOS BANE BELS BIZE BONG BRIN BUTE CARS CHIP COCH COSY CURL
+AGOG ALSO ARCS AVOW BANG BELT BLAB BONK BRIO BUTS CART CHIS COCK COTE CURN
+AGON ALTO ARDS AWAY BANI BEMA BLAD BONY BRIS BUTT CASA CHIT COCO COTH CURR
+AGRO ALTS AREA AWDL BANK BEND BLAE BOOB BRIT BUYS CASE CHIV CODA COTS CURS
+CURT DAYS DEXY DOBS DOUP DUMA EEEW ERAS EYRY FEET FISK FOOS FUSK GAUP GIOS
+CUSH DAZE DEYS DOBY DOUR DUMB EELS ERED FAAN FEGS FIST FOOT FUSS GAUR GIPS
+CUSK DEAD DHAK DOCK DOUT DUMP EELY ERES FAAS FEHM FITS FOPS FUST GAUS GIRD
+CUSP DEAF DHAL DOCO DOUX DUNE EERY EREV FABS FEHS FITT FORA FUTZ GAVE GIRL
+CUSS DEAL DHOL DOCS DOVE DUNG EEVN ERGO FACE FEIS FIVE FORB FUZE GAWD GIRN
+CUTE DEAN DHOW DOCU DOWD DUNK EFFS ERGS FACT FELL FIXT FORD FUZZ GAWK GIRO
+CUTS DEAR DIAL DODO DOWF DUNS EFTS ERHU FADE FELT FIZZ FORE FYCE GAWP GIRR
+CWMS DEAW DIBS DODS DOWL DUNT EGAD ERIC FADO FEME FLAB FORK FYKE GAWS GIRT
+CYAN DEBE DICE DOEK DOWN DUOS EGAL ERKS FADS FEMS FLAG FORM FYLE GAYS GISM
+CYMA DEBS DICH DOEN DOWP DUPE EGER ERNE FADY FEND FLAK FORT FYRD GAZE GIST
+CYME DEBT DICK DOER DOWS DUPS EGGS ERNS FAFF FENI FLAM FOSS GABS GAZY GITE
+CYST DECK DICT DOES DOWT DURA EGGY EROS FAGS FENS FLAN FOUD GABY GEAL GITS
+CYTE DECO DIDO DOFF DOXX DURE EGIS ERRS FAHS FENT FLAP FOUL GACH GEAN GIVE
+CZAR DEED DIDY DOGE DOXY DURN EGMA ERST FAIK FEOD FLAT FOUR GADE GEAR GIZZ
+DAAL DEEK DIEB DOGS DOYS DURO EGOS ERUV FAIL FERE FLAW FOUS GADI GEAT GJUS
+DABS DEEM DIED DOGY DOZE DURR EHED ESES FAIN FERM FLAX FOWL GADS GECK GLAD
+DACE DEEN DIEL DOHS DOZY DUSH EIDE ESKY FAIR FERN FLAY FOXY GAED GEDS GLAM
+DACK DEEP DIES DOIT DRAB DUSK EIKS ESNE FAIX FESS FLEA FOYS GAEN GEED GLED
+DADA DEER DIET DOJO DRAC DUST EILD ESPY FAKE FEST FLED FOZY GAES GEEK GLEE
+DADO DEES DIFF DOLE DRAD DUTY EINA ESSE FALL FETA FLEE FRAB GAFF GEEP GLEG
+DADS DEET DIFS DOLL DRAG DWAM EINE ESTS FALX FETE FLEG FRAE GAGA GEES GLEI
+DAES DEEV DIGS DOLS DRAM DYAD EISH ETAS FAME FETS FLEW FRAG GAGE GEEZ GLEN
+DAFF DEFI DIKA DOLT DRAP DYED EKED ETAT FAMS FETT FLEX FRAP GAGS GEIT GLEY
+DAFT DEFO DIKE DOME DRAT DYER EKES ETCH FAND FEUD FLEY FRAS GAID GELD GLIA
+DAGS DEFT DILL DOMS DRAW DYES EKKA ETEN FANE FEUS FLIC FRAT GAIN GELS GLIB
+DAHL DEFY DIME DOMY DRAY DYKE ELAN ETHE FANG FEWS FLIM FRAU GAIR GELT GLID
+DAHS DEGS DIMP DONA DREE DYNE ELDS ETHS FANK FEYS FLIP FRAY GAIT GEMS GLIM
+DAIS DEGU DIMS DONE DREG DZHO ELFS ETIC FANO FIAR FLIR FREE GAJO GENA GLIT
+DAKS DEID DINE DONG DREK DZOS ELHI ETNA FANS FIAT FLIT FRET GAKS GENE GLOB
+DALE DEIF DING DONS DREW EACH ELKS ETUI FAPS FIBS FLIX FRIB GALA GENS GLOM
+DALI DEIL DINK DOOB DREY EALE ELLS EUGE FARD FICE FLOB FRIG GALE GENT GLOP
+DALS DEKE DINO DOOK DRIB EANS ELMS EUGH FARE FICO FLOC FRIS GALL GENU GLOW
+DALT DELE DINS DOOL DRIP EARD ELMY EUKS FARL FIDO FLOE FRIT GALS GEOS GLUE
+DAME DELF DINT DOOM DROP EARL ELSE EUOI FARM FIDS FLOG FRIZ GAMA GERE GLUG
+DAMN DELI DIOL DOON DROW EARN ELTS EURO FARO FIEF FLOP FROE GAMB GERM GLUM
+DAMP DELL DIPS DOOR DRUB EARS EMES EVEN FARS FIER FLOR FROG GAME GERS GLUT
+DAMS DELO DIPT DOOS DRUG EASE EMEU EVER FART FIFE FLOW FROM GAMP GERT GNAR
+DANG DELS DIRE DOPA DRUM EAST EMIC EVES FASH FIFI FLOX FROS GAMS GEST GNAT
+DANK DELT DIRK DOPE DRYS EASY EMIR EVET FAST FIGO FLUB FROW GAMY GETA GNAW
+DANS DEME DIRL DOPS DSOS EATH EMIT EVIL FATE FIGS FLUE FRUG GANE GETS GNOW
+DANT DEMO DIRT DOPY DUAD EATS EMMA EVOE FATS FIKE FLUS FUBS GANG GEUM GNUS
+DAPS DEMY DISA DORB DUAL EAUS EMMY EVOS FAUN FIKY FLUX FUCI GANK GHAT GOAD
+DARB DENE DISC DORE DUAN EAUX EMOS EWER FAUR FILA FOAL FUCK GANS GHEE GOAF
+DARE DENI DISH DORK DUAR EAVE EMPT EWES FAUT FILE FOAM FUDS GANT GHIS GOAL
+DARG DENS DISK DORM DUBS EBBS EMUS EWKS FAUX FILK FOBS FUEL GAOL GIBE GOAS
+DARI DENT DISS DORP DUCE EBON EMYD EWTS FAVA FILL FOCI FUFF GAPE GIBS GOAT
+DARK DENY DITA DORR DUCI ECAD EMYS EXAM FAVE FILM FOEN FUGS GAPO GIDS GOBI
+DARN DEPS DITE DORS DUCK ECCE ENDS EXEC FAVS FILO FOES FUGU GAPS GIED GOBO
+DART DERE DITS DORT DUCT ECCO ENES EXED FAWN FILS FOGS FUJI GAPY GIEN GOBS
+DASH DERM DITT DORY DUDE ECHE ENEW EXES FAWS FIND FOGY FULL GARB GIES GOBY
+DATA DERN DITZ DOSA DUDS ECHO ENGS EXIT FAYS FINE FOHN FUME GARE GIFS GODS
+DATE DERO DIVA DOSE DUED ECHT ENOL EXON FAZE FINI FOID FUMS GARI GIFT GOEL
+DATO DERP DIVE DOSH DUEL ECOD ENOW EXPO FEAL FINK FOIL FUMY GARS GIGA GOER
+DAUB DERV DIVI DOSS DUES ECOS ENTS EXUL FEAR FINO FOIN FUND GART GIGS GOES
+DAUD DESI DIVO DOST DUET ECRU ENUF EYAS FEAT FINS FOLD FUNG GASH GILA GOEY
+DAUR DESK DIVS DOTE DUFF ECUS ENVY EYED FECK FIQH FOLK FUNK GASP GILD GOFF
+DAUT DEUS DIXI DOTH DUGS EDDO EOAN EYEN FEDS FIRE FOLX FUNS GAST GILL GOGO
+DAVY DEVA DIXY DOTS DUIT EDDY EONS EYER FEEB FIRK FOND FURL GATE GILT GOJI
+DAWD DEVI DIYA DOTY DUKA EDGE EORL EYES FEED FIRM FONE FURR GATH GIMP GOLD
+DAWK DEVO DJIN DOUC DUKE EDGY EPEE EYNE FEEL FIRN FONS FURS GATS GING GOLE
+DAWN DEVS DOAB DOUK DULE EDHS EPHA EYOT FEEN FIRS FONT FURY GAUD GINK GOLF
+DAWS DEWS DOAT DOUM DULL EDIT EPIC EYRA FEER FISC FOOD FUSC GAUM GINN GOLP
+DAWT DEWY DOBE DOUN DULY EECH EPOS EYRE FEES FISH FOOL FUSE GAUN GINS GONE
+GONG GUDE HAJI HEIR HOAX HOWL IDEM JABS JINS KAED KEMP KNAG KVAS LAVE LIDO
+GONK GUES HAJJ HELD HOBO HOWS IDES JACK JINX KAES KENO KNAP KYAK LAVS LIDS
+GONS GUFF HAKA HELE HOBS HOYA IDLE JADE JIRD KAFS KENS KNAR KYAR LAWK LIED
+GOOD GUGA HAKE HELL HOCK HOYS IDLY JAFA JISM KAGO KENT KNEE KYAT LAWN LIEF
+GOOF GUID HAKU HELM HODS HUBS IDOL JAGA JIVE KAGU KEPI KNEW KYBO LAWS LIEN
+GOOG GULA HALE HELO HOED HUCK IDYL JAGG JIVY KAID KEPS KNIT KYES LAYS LIER
+GOOK GULE HALF HELP HOER HUED IFFY JAGS JIZZ KAIE KEPT KNOB KYLE LAZE LIES
+GOOL GULF HALL HEME HOES HUER IGAD JAIL JOBE KAIF KERB KNOP KYND LAZO LIEU
+GOON GULL HALM HEMP HOGG HUES IGGS JAKE JOBS KAIK KERF KNOT KYNE LAZY LIFE
+GOOP GULP HALO HEMS HOGH HUFF IGLU JAKS JOCK KAIL KERN KNOW KYPE LEAD LIFT
+GOOR GULS HALT HEND HOGS HUGE IKAN JAMB JOCO KAIM KERO KNUB KYTE LEAF LIGS
+GOOS GULY HAME HENS HOHA HUGS IKAT JAMS JOES KAIN KESH KNUR KYUS LEAK LIKE
+GORA GUMP HAMS HENT HOHS HUGY IKON JANE JOEY KAIS KEST KNUT LABS LEAL LILL
+GORE GUMS HAND HEPS HOIK HUHU ILEA JANN JOGS KAKA KETA KOAN LACE LEAM LILO
+GORI GUNG HANG HEPT HOIS HUIA ILEX JAPE JOHN KAKI KETE KOAP LACK LEAN LILT
+GORM GUNK HANK HERB HOKA HUIC ILIA JAPS JOIN KAKS KETO KOAS LACS LEAP LILY
+GORP GUNS HANT HERD HOKE HUIS ILKA JARK JOKE KALE KETS KOBO LACY LEAR LIMA
+GORS GUPS HAOS HERE HOKI HULA ILKS JARL JOKY KALI KEWL KOBS LADE LEAS LIMB
+GORY GURL HAPS HERL HOLD HULE ILLS JARP JOLE KAMA KEYS KOEL LADS LEAT LIME
+GOSH GURN HAPU HERM HOLE HULK ILLY JARS JOLL KAME KHAF KOFF LADY LECH LIMN
+GOSS GURS HARD HERN HOLK HULL IMAM JASP JOLS KAMI KHAN KOHA LAER LEDE LIMO
+GOTH GURU HARE HERO HOLM HUMA IMID JASS JOLT KANA KHAT KOHL LAGS LEED LIMP
+GOUK GUSH HARK HERS HOLO HUMF IMMA JASY JOMO KANE KHET KOIS LAHS LEEK LIMY
+GOUT GUST HARL HERY HOLP HUMP IMMY JATO JONG KANG KHIS KOJI LAIC LEEP LIND
+GOVS GUTS HARM HESP HOLS HUMS IMPI JAUK JOOK KANS KHOR KOKA LAID LEER LINE
+GOWD GUVS HARN HEST HOLT HUNG IMPS JAUP JORS KANT KHUD KOLA LAIK LEES LING
+GOWF GUYS HARO HETE HOLY HUNH INBY JAVA JOSH KAON KIBE KOLO LAIN LEET LINK
+GOWK GYAL HARP HETH HOMA HUNK INCH JAWS JOSS KAPA KICK KOND LAIR LEFT LINN
+GOWL GYAN HART HETS HOME HUNS INDY JAXY JOTA KAPH KIDS KONK LAKE LEGS LINO
+GOWN GYBE HASH HEWN HOMO HUNT INFO JAYS JOTS KAPU KIEF KONS LAKH LEHR LINS
+GRAB GYMP HASK HEWS HOMS HUPS INGO JAZY JOUK KARA KIER KOOK LAKY LEIR LINT
+GRAD GYMS HASP HEYS HOMY HURL INGS JAZZ JOUR KARK KIEV KOPH LALL LEIS LINY
+GRAM GYNO HASS HICK HOND HURT INIA JEAN JOWL KARN KIFF KOPS LAMA LEKE LION
+GRAN GYNY HAST HIDE HONE HUSH INKS JEAT JOWS KARO KIFS KORA LAMB LEKS LIPA
+GRAT GYPO HATE HIED HONG HUSK INKY JEDI JOYS KART KILD KORE LAME LEKU LIPE
+GRAV GYPS HATH HIES HONK HUSO INLY JEED JUBA KATA KILL KORI LAMP LEME LIPO
+GRAY GYRE HATS HIGH HONS HUSS INNS JEEL JUBE KATI KILN KORO LAMS LEND LIPS
+GREE GYRI HAUD HIKE HOOD HUTS INRO JEEP JUCO KATS KILO KORS LANA LENG LIRA
+GREN GYRO HAUF HILA HOOF HWAN INTI JEER JUDO KAVA KILP KORU LAND LENO LIRE
+GREW GYTE HAUL HILD HOOK HWYL INTO JEES JUDS KAWA KILT KOSS LANE LENS LIRI
+GREX GYVE HAUN HILI HOON HYED INTS JEEZ JUDY KAWS KINA KOTO LANG LENT LIRK
+GREY HAAF HAUT HILL HOOP HYEN IONS JEFE JUGA KAYO KIND KOWS LANK LEPS LISK
+GRID HAAR HAVE HILT HOOR HYES IOTA JEFF JUGS KAYS KINE KRAB LANT LEPT LISP
+GRIG HABU HAWK HIMS HOOT HYKE IRED JEHU JUJU KAZI KING KRAI LANX LERE LIST
+GRIM HACK HAWM HIND HOPE HYLA IRES JELL JUKE KBAR KINK KRAY LAPS LERP LITE
+GRIN HADE HAWS HING HOPS HYLE IRID JEON JUKU KEAS KINO KRIS LARD LESS LITH
+GRIP HADJ HAYS HINS HORA HYMN IRIS JERK JUMP KEBS KINS KSAR LARE LEST LITS
+GRIS HADS HAZE HINT HORE HYPE IRKS JESS JUNK KECK KIPE KUDO LARI LETS LITU
+GRIT HAED HAZY HIOI HORK HYPO IRON JEST JUPE KEDS KIPP KUDU LARK LEUD LIVE
+GRIZ HAEM HEAD HIPS HORN HYPS ISBA JETE JURA KEEF KIPS KUEH LARN LEVA LOAD
+GROG HAEN HEAL HIPT HORS HYTE ISIT JETS JURE KEEK KIRK KUES LARS LEVE LOAF
+GROK HAES HEAP HIRE HOSE IAMB ISLE JEUX JURY KEEL KIRN KUFI LASE LEVO LOAM
+GROT HAET HEAR HISH HOSS IBEX ISMS JIAO JUST KEEN KIRS KUIA LASH LEVS LOAN
+GROW HAFF HEAT HISN HOST IBIS ISNA JIBB JUTE KEEP KISH KUKU LASS LEVY LOBE
+GRRL HAFT HEBE HISS HOTE ICED ISOS JIBE JUTS KEET KISS KULA LAST LEWD LOBI
+GRUB HAGG HECH HIST HOTS ICER ITAS JIBS JUVE KEFS KIST KUNA LATE LEWK LOBO
+GRUE HAGS HECK HITS HOUF ICES ITCH JIFF JYNX KEGS KITE KUNE LATH LEYS LOBS
+GRUM HAHA HEED HIVE HOUR ICHS ITEM JIGS KAAL KEIR KITH KURI LATI LIAR LOCA
+GUAC HAHS HEEL HIYA HOUT ICKS IURE JILL KAAS KEKS KITS KURU LATS LIAS LOCH
+GUAN HAIK HEFT HIZZ HOVE ICKY IWIS JILT KABS KELL KIVA KUTA LATU LIBS LOCI
+GUAR HAIL HEHS HMMM HOWE ICON IXIA JIMP KACK KELP KIWI KUTI LAUD LICE LOCK
+GUBS HAIN HEID HOAR HOWF IDEA IZAR JINK KADE KELT KLAP KUTU LAUF LICH LOCO
+GUCK HAIR HEIL HOAS HOWK IDEE JAAP JINN KADI KEMB KLIK KUZU LAVA LICK LOCS
+LODE LUGE MAKO MEDS MILF MOLD MUGS NAOS NIFF NOYS OILY ORDO PACT PEAT PICA
+LODS LUGS MAKS MEED MILK MOLE MUID NAPA NIGH NUBS OINK ORDS PACY PEBA PICE
+LOFT LUIT MALA MEEK MILL MOLL MUIL NAPE NILL NUDE OINT ORES PADI PECH PICK
+LOGE LUKE MALE MEER MILO MOLS MUIR NAPS NILS NUFF OKAS ORFE PADS PECK PICS
+LOGO LULL MALI MEES MILS MOLT MULE NARC NIMB NUGS OKAY ORFS PAGE PECS PIED
+LOGS LULU MALL MEET MILT MOLY MULL NARD NIMS NUKE OKEH ORGS PAHS PEDI PIER
+LOGY LULZ MALM MEFF MIME MOME MUMM NARE NINE NULL OKES ORGY PAID PEDS PIES
+LOID LUMA MALS MEGA MINA MOMI MUMP NARK NIPA NUMB OKRA ORLE PAIK PEED PIET
+LOIN LUMP MALT MEGS MIND MOMS MUMS NARY NIPS NUNS OKTA ORRA PAIL PEEK PIGS
+LOIR LUMS MAMA MEIN MINE MONA MUMU NATS NIRL NURD OLDE ORTS PAIN PEEL PIKA
+LOKE LUNA MAMS MELA MING MONG MUNG NAVE NISH NURL OLDS ORYX PAIR PEEN PIKE
+LOLL LUNE MANA MELD MINI MONK MUNI NAVS NISI NURR OLDY ORZO PAIS PEEP PIKI
+LOLZ LUNG MAND MELL MINK MONO MUNS NAVY NITE NURS OLEA OSAR PAKS PEER PILA
+LOMA LUNK MANE MELS MINO MONS MUON NAYS NITS NUTS OLEO OSES PALE PEES PILE
+LOME LUNS MANG MELT MINT MONY MURA NAZE NIXE NYAH OLES OSSA PALI PEGH PILI
+LONE LUNT MANI MEME MINX MOOD MURE NAZI NIXY NYAS OLID OTIC PALL PEGS PILL
+LONG LUNY MANO MEMO MINY MOOI MURK NEAL NOAH NYED OLIO OTTO PALM PEHS PILY
+LOOF LURE MANS MEMS MIPS MOOK MURL NEAP NOBS NYES OLLA OUCH PALP PEIN PIMA
+LOOK LURK MANY MEND MIRE MOOL MURR NEAR NOCK OAFS OLMS OUDS PALS PEKE PIMP
+LOOM LURS MAPS MENE MIRI MOON MUSE NEAT NODE OAKS OLPE OUKS PALY PELA PINA
+LOON LUSH MARA MENG MIRK MOOP MUSH NEBS NODI OAKY OMAS OULD PAMS PELE PINE
+LOOP LUSK MARC MENO MIRO MOOR MUSK NECK NODS OARS OMBU OULK PAND PELF PING
+LOOR LUST MARD MENT MIRS MOOS MUSO NEDS NOEL OARY OMEN OUMA PANE PELL PINK
+LOOS LUTE MARE MENU MIRV MOOT MUSS NEED NOES OAST OMER OUPA PANG PELS PINS
+LOOT LUTZ MARG MEOU MIRY MOPE MUST NEEM NOGG OATH OMIT OUPH PANS PELT PINT
+LOPE LUVS MARK MEOW MISE MOPS MUTE NEEP NOGS OATS OMOV OUPS PANT PEND PINY
+LOPS LUXE MARL MERC MISO MOPY MUTI NEFS NOIL OATY ONCE OURN PAPA PENE PION
+LORD LWEI MARM MERE MISS MORA MUTS NEGS NOIR OBAS ONER OURS PAPE PENG PIOY
+LORE LYAM MARS MERI MIST MORE MUTT NEIF NOLE OBES ONES OUST PAPS PENI PIPA
+LORN LYCH MART MERK MITE MORN MUZZ NEKS NOLL OBEY ONIE OUTA PARA PENK PIPE
+LORY LYES MARY MERL MITT MORS MWAH NEMA NOLO OBIA ONLY OUTS PARD PENS PIPI
+LOSE LYME MASA MESA MITY MORT MYAL NEMN NOMA OBIS ONOS OUZO PARE PENT PIPS
+LOSH LYMS MASE MESE MIXT MOSE MYCS NENE NOME OBIT ONST OVAL PARK PEON PIPY
+LOSS LYNE MASH MESH MIXY MOSH MYNA NEON NOMS OBOE ONTO OVEL PARM PEPO PIRL
+LOST LYNX MASK MESS MIZZ MOSK MYTH NEPS NONA OBOL ONUS OVEN PARP PEPS PIRN
+LOTA LYRA MASS META MNAS MOSS MYXO NERD NONE OBOS ONYX OVER PARR PERC PIRS
+LOTE LYRE MAST METE MOAI MOST MZEE NERF NONG OBVS OOFS OVUM PARS PERE PISE
+LOTH LYSE MASU METH MOAN MOTE NAAM NERK NONI OCAS OOFY OWED PART PERI PISH
+LOTI LYTE MATE METS MOAS MOTH NAAN NESH NOOB OCCY OOHS OWER PASE PERK PISO
+LOTO MAAR MATH MEUS MOAT MOTI NABE NESS NOOK OCHE OOMS OWES PASH PERM PISS
+LOTS MAAS MATS MEVE MOBE MOTS NABK NEST NOON OONS OWIE PASS PERN PITA
+LOUD MABE MATT MEWL MOBO MOTT NABS NETE NOOP ODAH OONT OWLS PAST PERP PITH
+LOUN MACA MATY MEWS MOBS MOTU NACH NETS NOPE ODAL OOPS OWLY PATE PERT PITS
+LOUP MACE MAUD MEZE MOBY MOUE NADA NETT NORI ODAS OOSE OWNS PATH PERV PITY
+LOUR MACH MAUL MEZZ MOCH MOUP NADS NEUK NORK ODDS OOSY OWRE PATS PESO PIUM
+LOUS MACK MAUN MHOS MOCK MOUS NAES NEUM NORM ODEA OOTS OWSE PATU PEST PIXY
+LOUT MACS MAUT MIBS MOCS MOVE NAFF NEVE NOSE ODES OOZE OWTS PATY PETS PIZE
+LOVE MADE MAWK MICA MODE MOWA NAGA NEVI NOSH ODIC OOZY OXEN PAUA PEWS PLAN
+LOWE MADS MAWN MICE MODI MOWN NAGS NEWB NOSY ODOR OPAH OXER PAUL PFFT PLAP
+LOWN MAES MAWR MICH MOWS NAIF NEWS NOTA ODSO OPAL OXES PAVE PFUI PLAT
+LOWP MAGE MAWS MICO MOER MOXA NAIK NEWT NOTE ODYL OPAS OXIC PAVS PHAT PLAY
+LOWS MAGG MAXI MICS MOES MOYA NAIL NEXT NOTT OFFA OPED OXID PAWA PHEO PLEA
+LOWT MAGI MAYA MIDI MOFO MOYL NAIN NGAI NOUL OFFS OPEN OXIM PAWK PHEW PLEB
+LOYS MAGS MAYO MIDS MOGS MOYS NALA NIBS NOUN OFFY OPES OYER PAWL PHIS PLED
+LUAU MAHA MAYS MIEN MOHO MOZE NAME NICE NOUP OGAM OPPO OYES PAWN PHIZ PLEW
+LUBE MAID MAZE MIFF MOHR MOZO NAMS NICK NOUS OGEE OPTS OYEZ PAWS PHOH PLEX
+LUCE MAIK MAZY MIGG MOIL MOZZ NAMU NIDE NOUT OGLE OPUS PAAL PAYS PHON PLIE
+LUCK MAIL MEAD MIGS MOIT MPOX NANA NIDI NOVA OGRE ORAD PAAN PEAG PHOS PLIM
+LUDE MAIM MEAL MIHA MOJO MUCH NANE NIDS NOWL OHED ORAL PACA PEAK PHOT PLOD
+LUDO MAIN MEAN MIHI MOKE MUCK NANG NIED NOWN OHIA ORBS PACE PEAL PHUT PLOP
+LUDS MAIR MEAT MIKE MOKI MUDS NANO NIEF NOWS OHMS ORBY PACK PEAN PIAL PLOT
+LUES MAKE MECH MILD MOKO MUFF NANS NIES NOWT OIKS ORCA PACO PEAR PIAN PLOW
+LUFF MAKI MECK MILE MOLA MUGG NAOI NIFE NOWY OILS ORCS PACS PEAS PIAS PLOY
+PLUE POUT PUNA RAGG REDS RIMU ROPE RYFE SCAB SERE SIFT SKYR SOCA SPAM SUES
+PLUG POWN PUNG RAGI REED RIMY ROPY RYKE SCAD SERF SIGH SLAB SOCK SPAN SUET
+PLUM POWS PUNK RAGS REEF RIND RORE RYND SCAG SERK SIGN SLAE SOCS SPAR SUGH
+PLUS POXY PUNS RAGU REEK RINE RORT RYOT SCAM SERR SIGS SLAG SODA SPAS SUGO
+POAS POZZ PUNT RAHS REEL RING RORY RYPE SCAN SERS SIJO SLAM SODS SPAT SUGS
+POCK PRAD PUNY RAIA REEN RINK ROSE RYUS SCAR SESE SIKA SLAP SOFA SPAW SUID
+POCO PRAM PUPA RAID REES RINS ROST SAAG SCAT SESH SIKE SLAT SOFT SPAY SUIT
+PODS PRAO PUPS RAIK REFI RIOT ROSY SABE SCAW SESS SILD SLAW SOGS SPEC SUKH
+POEM PRAT PUPU RAIL REFS RIPE ROTA SABS SCOG SETA SILE SLAY SOHO SPED SUKS
+POEP PRAU PURE RAIN REFT RIPP ROTE SACK SCOP SETS SILK SLEB SOHS SPEK SULK
+POET PRAY PURI RAIS REGO RIPS ROTI SACS SCOT SETT SILL SLED SOIL SPET SULU
+POGO PREE PURL RAIT REGS RIPT ROTL SADE SCOW SEVS SILO SLEE SOJA SPEW SUMI
+POGY PREM PURR RAJA REHS RISE ROTO SADI SCRY SEWN SILT SLEW SOJU SPIE SUMO
+POHS PREP PURS RAKE REIF RISK ROTS SADO SCUD SEWS SIMA SLEY SOKE SPIF SUMP
+POIS PREX PUSH RAKI REIK RISP ROUE SADS SCUG SEXT SIMI SLID SOLA SPIM SUMS
+POKE PREY PUSS RAKU REIN RITE ROUL SAFE SCUL SEXY SIMP SLIM SOLD SPIN SUMY
+POKY PREZ PUTS RALE REIS RITS ROUM SAFT SCUM SEYS SIMS SLIP SOLE SPIT SUNG
+POLE PRIG PUTT RAMI REKE RITT ROUP SAGA SCUP SHAD SIND SLIT SOLI SPIV SUNI
+POLK PRIM PUTZ RAMP RELY RITZ ROUT SAGE SCUR SHAG SINE SLOB SOLO SPOD SUNK
+POLL PROA PUYS RAMS REMS RIVA ROUX SAGO SCUT SHAH SING SLOE SOLS SPOT SUNN
+POLO PROB PWNS RANA REND RIVE ROVE SAGS SCYE SHAM SINH SLOG SOMA SPRY SUNS
+POLS PROD PYAS RAND RENK RIVO ROWS SAGY SEAL SHAN SINK SLOP SOME SPUD SUPE
+POLT PROF PYAT RANG RENO RIZA ROWT SAIC SEAM SHAT SINS SLOT SOMS SPUE SUPS
+POLY PROG PYES RANI RENS ROAD RUBE SAID SEAN SHAW SIPE SLOW SOMY SPUG SUQS
+POME PROM PYET RANK RENT ROAM RUBS SAIL SEAR SHAY SIPS SLUB SONE SPUN SURA
+POMO PROO PYIC RANT RENY ROAN RUBY SAIM SEAS SHEA SIRE SLUE SONG SPUR SURD
+POMP PROP PYIN RAPE REOS ROAR RUCK SAIN SEAT SHED SIRI SLUG SONS SRIS SURE
+POMS PROS PYNE RAPS REPO ROBE RUCS SAIR SEAX SHEN SIRS SLUM SOOK STAB SURF
+POND PROW PYOT RAPT REPP ROBS RUDD SAIS SECH SHES SISS SLUR SOOL STAG SUSS
+PONE PRUH PYRE RARE REPS ROCH RUDE SAKE SECO SHET SIST SLUT SOOM STAN SUSU
+PONG PRYS PYRO RARK RESH ROCK RUDI SAKI SECS SHEW SITE SMEE SOON STAP SWAB
+PONK PSIS QADI RASE REST ROCS RUDS SALE SECT SHHH SITH SMEW SOOP STAR SWAD
+PONS PSST QAID RASH RETE RODE RUDY SALL SEED SHIM SITS SMIR SOOT STAT SWAG
+PONT PTUI QATS RASP RETS RODS RUED SALP SEEK SHIN SITZ SMIT SOPH STAW SWAM
+PONY PUBE QINS RAST REVS ROED RUER SALS SEEL SHIP SIZE SMOG SOPS STAY SWAN
+POOD PUBS QOPH RATA REWS ROES RUES SALT SEEM SHIR SIZY SMUG SORA STED SWAP
+POOF PUCE QUAD RATE RHEA ROHE RUFF SAMA SEEN SHIT SJOE SMUR SORB STEM SWAT
+POOH PUCK QUAG RATH RHOS ROID RUGA SAME SEEP SHIV SKAG SMUT SORD STEN SWAY
+POOK PUDS QUAI RATO RHUS ROIL RUGS SAMP SEER SHMO SKAS SNAB SORE STEP SWEE
+POOL PUDU QUAT RATS RIAD ROIN RUIN SAMS SEES SHOD SKAT SNAG SORI STET SWEY
+POON PUER QUAY RATU RIAL ROJI RUKH SAND SEGO SHOE SKAW SNAP SORN STEW SWIG
+POOP PUFF QUEP RAUN RIAS ROKE RULE SANE SEGS SHOG SKED SNAR SORT STEY SWIM
+POOR PUGH QUEY RAVE RIBA ROKS RULY SANG SEIF SHOO SKEE SNAW SOSS STIE SWIZ
+POOS PUGS QUID RAVS RIBS ROKY RUME SANK SEIK SHOP SKEG SNEB SOTH STIM SWOB
+POOT PUHA QUIM RAWN RICE ROLE RUMP SANS SEIL SHOT SKEN SNED SOTS STIR SWOP
+POPE PUIR QUIN RAWS RICH ROLF RUMS SANT SEIR SHOW SKEO SNEE SOUK STOA SWOT
+POPS PUJA QUIP RAYA RICK ROLL RUND SAPS SEIS SHRI SKEP SNIB SOUL STOB SWUM
+PORE PUKA QUIT RAYS RICY ROMA RUNE SARD SEKT SHUL SKER SNIG SOUM STOP SYBO
+PORK PUKE QUIZ RAZE RIDE ROMP RUNG SARI SELD SHUN SKET SNIP SOUP STOT SYCE
+PORN PUKU QUOD RAZZ RIDS ROMS RUNS SARK SELE SHUT SKEW SNIT SOUR STOW SYED
+PORT PUKY QUOP READ RIEL RONA RUNT SARS SELF SHWA SKID SNOB SOUS STUB SYEN
+PORY PULA RABI REAK RIEM RONE RURP SASH SELL SIAL SKIM SNOD SOUT STUD SYES
+POSE PULE RACA REAL RIFE RONG RURU SASS SELS SIBB SKIN SNOG SOVS STUM SYKE
+POSH PULI RACE REAM RIFF RONT RUSA SATE SEME SIBS SKIO SNOT SOWF STUN SYLI
+POSS PULK RACH REAN RIFS RONZ RUSE SATI SEMI SICE SKIP SNOW SOWL STYE SYNC
+POST PULL RACK REAP RIFT ROOD RUSH SAUL SENA SICH SKIS SNUB SOWM SUBA SYND
+POSY PULP RACY REAR RIGG ROOF RUSK SAUT SEND SICK SKIT SNUG SOWN SUBS SYNE
+POTE PULS RADE REBS RIGS ROOK RUST SAVE SENE SICS SKOG SNYE SOWP SUCH SYPE
+POTS PULU RADS RECK RILE ROOM RUTH SAVS SENS SIDA SKOL SOAK SOWS SUCK SYPH
+POTT PULY RAFF RECS RILL ROON RUTS SAWN SENT SIDE SKRY SOAP SOYA SUDD TAAL
+POUF PUMA RAFT REDD RIMA ROOP RYAL SAWS SEPS SIDH SKUA SOAR SOYS SUDS TABI
+POUK PUMP RAGA REDE RIME ROOS RYAS SAXE SEPT SIEN SKUG SOBA SPAE SUED TABS
+POUR PUMY RAGE REDO RIMS ROOT RYES SAYS SERA SIES SKYF SOBS SPAG SUER TABU
+TACE TAWT THIG TOCS TOUT TURF UNBE VAST VISE WAME WELP WINO YABA YILL ZARF
+TACH TAXA THIN TODS TOWN TURK UNCE VATS VITA WAND WELS WINS YACK YINS ZARI
+TACK TAXI THIO TODY TOWS TURM UNCI VATU VITE WANE WELT WINY YADS YIPE ZATI
+TACO TAYS THIR TOEA TOWT TURN UNCO VAUS VIVA WANG WEMB WIPE YAFF YIPS ZEAL
+TACT TEAD THIS TOED TOWY TURR UNDE VAUT VIVE WANK WEMS WIRE YAGE YIRD ZEAS
+TADS TEAK THON TOES TOYO TUSH UNDO VAVS VIVO WANS WENA WIRY YAGI YIRK ZEBU
+TAED TEAL THOU TOEY TOYS TUSK UNDY VAWS VIZY WANT WEND WISE YAGS YIRR ZEDA
+TAEL TEAM THRO TOFF TOZE TUTS UNIS VAXX VLEI WANY WENS WISH YAHS YITE ZEDS
+TAES TEAR THRU TOFT TRAD TUTU UNIT VEAL VLOG WAPS WENT WISP YAJE YLEM ZEES
+TAGS TEAS THUD TOFU TRAM TUZZ UNTO VEEP VOAR WAQF WEPT WISS YAKS YLKE ZEIN
+TAHA TEAT THUG TOGA TRAP TWAE UPAS VEER VOES WARB WERE WIST YALD YMPE ZEKS
+TAHR TECH THUS TOGE TRAT TWAL UPBY VEES VOGS WARD WERO WITE YALE YMPT ZELS
+TAIL TECS TIAN TOGS TRAY TWAS UPDO VEGA VOID WARE WERT WITH YAMS YOBS ZENS
+TAIN TEDS TIAR TOHO TREE TWAT UPGO VEGO VOIP WARK WEST WITS YANG YOCK ZEPS
+TAIS TEDY TICE TOIL TREF TWAY UPON VEHM VOLA WARM WETA WIVE YANK YODE ZERK
+TAIT TEED TICH TOIT TREK TWEE UPSY VEIL VOLE WARN WETS WOAD YAPP YODH ZERO
+TAKA TEEK TICK TOKE TREM TWIG UPTA VEIN VOLK WARP WEXE WOAH YAPS YODS ZEST
+TAKE TEEL TICS TOKO TRES TWIN URAO VELA VOLS WARS WEYS WOCK YARD YOGA ZETA
+TAKI TEEM TIDE TOLA TRET TWIT URBS VELD VOLT WART WHAE WOES YARE YOGH ZEZE
+TAKS TEEN TIDS TOLD TREW TWOS URDE VELE VOMS WARY WHAM WOFS YARK YOGI ZHOS
+TAKY TEER TIDY TOLE TREY TYDE URDS VELL VORS WASE WHAP WOKE YARN YOKE ZIFF
+TALA TEES TIED TOLL TREZ TYED URDY VENA VOTE WASH WHAT WOKS YARR YOKS ZIGS
+TALC TEFF TIER TOLT TRIE TYEE UREA VEND VOWS WASM WHEE WOLD YATE YOLD ZILA
+TALE TEFS TIES TOLU TRIG TYER URES VENT VRIL WASP WHEN WOLF YAUD YOLK ZILL
+TALI TEGG TIFF TOMB TRIM TYES URGE VERA VROT WAST WHET WOMB YAUP YOMP ZIMB
+TALK TEGS TIFO TOME TRIN TYGS URIC VERB VROU WATE WHEW WONK YAWL YOND ZINC
+TALL TEGU TIFT TOMO TYIN URNS VERD VROW WATS WHEY WONS YAWN YONI ZINE
+TAME TEHR TIGE TOMS TRIP TYKE URPS VERS VUGG WATT WHID WONT YAWP YONT ZING
+TAMP TEIL TIGS TONE TROD TYMP URSA VERT VUGH WAUK WHIG WOOD YAWS YOOF ZINS
+TAMS TEIN TIKA TONG TROG TYND URUS VERY VUGS WAUL WHIM WOOF YAWY YOOP ZIPS
+TANA TELA TIKE TONK TRON TYNE URVA VEST VULN WAUR WHIN WOOL YAYS YORE ZITE
+TANE TELD TIKI TONS TROP TYPE USED VETO VUMS WAVE WHIO WOON YBET YORK ZITI
+TANG TELE TIKS TONY TROT TYPO USER VETS WAAC WAVY WHIP WOOS YEAD YORP ZITS
+TANH TELL TILE TOOK TROU TYPP USES VEXT WAAH WAWA WHIR WOOT YEAH YOTE ZIZZ
+TANK TELS TILL TOOL TROW TYPY UTAS VIAE WABS WAWE WHIT WOPS YEAN YOUK ZOBO
+TANS TELT TILS TOOM TROY TYRE UTES VIAL WACK WAWL WHIZ WORD YEAR YOUR ZOBU
+TAOS TEME TILT TOON TRUE TYRO UTIS VIAS WADD WAWS WHOA WORE YEAS YOUS ZOEA
+TAPA TEMP TIME TOOT TRUG TYTE UTUS VIBE WADE WAXY WHOM WORK YEBO YOWE ZOIC
+TAPE TEMS TINA TOPE TRYE TZAR UVAE VIBS WADI WAYS WHOP WORM YECH YOWL ZOLS
+TAPS TEND TIND TOPH TRYP UDAL UVAS VICE WADS WAZZ WHOT WORN YEDE YOWS ZONA
+TAPU TENE TINE TOPI TSAR UDON UVEA VIDE WADT WEAK WHOW WORT YEED YUAN ZONE
+TARA TENS TING TOPO TSKS UDOS VACS VIDS WADY WEAL WHUP WOST YEET YUCA ZONK
+TARE TENT TINK TOPS TUAN UEYS VADE VIED WAES WEAN WHYS WOTS YEGG YUCH ZOOM
+TARN TEPA TINS TORA TUBA UFOS VAES VIER WAFF WEAR WICE WOVE YELD YUCK ZOON
+TARO TERF TINT TORC TUBE UGHS VAGI VIES WAFT WEBS WICH WOWF YELK YUFT ZOOS
+TARP TERM TINY TORE TUBS UGLY VAGS VIEW WAGE WEDS WICK WOWS YELL YUGA ZOOT
+TARS TERN TIPI TORI TUCK UKES VAIL VIFF WAGS WEED WIDE WRAP YELM YUGS ZORI
+TART TEST TIPS TORN TUFA ULAN VAIN VIGA WAID WEEK WIEL WREN YELP YUKE ZOUK
+TASE TETE TIPT TORO TUFF ULES VAIR VIGS WAIF WEEL WIFE WRIT YELT YUKO ZUKE
+TASH TETH TIRE TORR TUFT ULEX VALE VILD WAIL WEEM WIGS WUDS YENS YUKS ZULU
+TASK TETS TIRL TORS TUGS ULNA VALI VILE WAIN WEEN WIKI WUDU YEOW YUKY ZUPA
+TASS TEWS TIRO TORT TUIS ULUS VAMP VILL WAIR WEEP WILD WULL YEPS YULE ZURF
+TATE TEXT TIRR TORY TULE ULVA VANE VIMS WAIS WEER WILE WUSS YERD YUMP ZYGA
+TATH THAE TITE TOSA TUMP UMBO VANG VINA WAIT WEES WILI WYCH YERK YUNX ZYME
+TATS THAN TITI TOSE TUMS UMES VANS VINE WAKA WEET WILL WYES YESK YUPS ZZZS
+TATT THAR TITS TOSH TUNA UMMA VANT VINO WAKE WEFT WILT WYLE YEST YURT
+TATU THAT TIVY TOSS TUND UMPH VAPE VINS WAKF WEID WILY WYND YETI YUTZ
+TAUS THAW TIYN TOST TUNE UMPS VARA VINT WALD WEIL WIMP WYNN YETT YUZU
+TAUT THEE TIZZ TOTE TUNG UMPY VARE VINY WALE WEIR WIND WYNS YEUK YWIS
+TAVA THEM TOAD TOTS TUNS UMRA VARS VIOL WALI WEKA WINE WYTE YEVE ZACK
+TAVS THEN TOBY TOUK TUNY UMUS VARY VIRE WALK WELD WING XRAY YEWS ZAGS
+TAWA THEW TOCK TOUN TUPS UNAI VASA VIRL WALL WELK WINK XYST YGOE ZANY
+TAWS THEY TOCO TOUR TURD UNAU VASE VISA WALY WELL WINN YAAR YIKE ZAPS`.match(/\S+/g).sort(),
+            "Bingo": {
+                "TISANE": ["ENTASIA","TAENIAS","BANTIES","BASINET","BESAINT","BESTAIN","ACETINS","CANIEST","CINEAST","DESTAIN","DETAINS","INSTEAD","NIDATES","SAINTED","SATINED","STAINED"],
+                "SATIRE": ["ARISTAE","ASTERIA","ATRESIA","BAITERS","BARITES","REBAITS","TERBIAS","ATRESIC","CRISTAE","RACIEST","STEARIC"],
+                "RETINA": ["ATEBRIN","CANTIER","CERATIN","CERTAIN","CREATIN","CRINATE","NACRITE","TACRINE","ANTIRED","DETRAIN","TRAINED","ARENITE","RETINAE","TRAINEE","FAINTER","FENITAR","GRANITE","GRATINE","INGRATE","TANGIER","TEARING","HAIRNET","INEARTH","THERIAN","INERTIA","JANTIER","NARTJIE","KERATIN","ENTRAIL","LATRINE","RATLINE","RELIANT","RETINAL","TRENAIL","MERANTI","MINARET","RAIMENT","ENTRAIN","TRANNIE","OTARINE","INAPTER","PAINTER","PERTAIN","REPAINT","TERRAIN","TRAINER","ANESTRI","ANTSIER","NASTIER","RATINES","RESIANT","RETAINS","RETINAS","RETSINA","STAINER","STARNIE","STEARIN","INTREAT","ITERANT","NATTIER","NITRATE","TARTINE","TERTIAN","RUINATE","TAURINE","URANITE","URINATE","TAWNIER","TINWARE"]
+            }
+        };
+
+        const scrabblePoints = { A:1, B:3, C:3, D:2, E:1, F:4, G:2, H:4, I:1, J:8, K:5, L:1, M:3, N:1, O:1, P:3, Q:10, R:1, S:1, T:1, U:1, V:4, W:4, X:8, Y:4, Z:10 };
+
+        let currentCategory = '2', wordListPool = [], allAnagrams = [], foundWords = [], score = 0, streak = 0, solvedTileSets = 0, isPaused = false, isRevealedMode = false, playerName = "Player", timerInterval = null, timeLeft = 10, maxTime = 12, sessionHistory = [], currentBaseWord = "";
+
+        function showScreen(key) { 
+            document.querySelectorAll('#app > div:not(.bg-indigo-500)').forEach(s => s.classList.add('hidden')); 
+            document.getElementById(key + '-screen').classList.remove('hidden'); 
+        }
+
+        function goToWelcome() { showScreen('welcome'); }
+
+        function updatePlayerNameDisplays() {
+            const name = playerName || "Player";
+            document.getElementById('setup-player-name').innerText = name;
+            document.getElementById('game-player-name').innerText = name;
+            document.getElementById('result-player-name').innerText = name + "!";
+        }
+
+        function goToSetup() { 
+            playerName = document.getElementById('player-name-input').value.trim() || "Player"; 
+            updatePlayerNameDisplays();
+            showScreen('setup'); 
+        }
+
+        function backToCategories() { 
+            document.getElementById('main-category-section').classList.remove('hidden'); 
+            document.getElementById('sub-category-section').classList.add('hidden'); 
+        }
+
+        function selectCategory(cat, name) {
+            currentCategory = cat;
+            document.getElementById('main-category-section').classList.add('hidden');
+            document.getElementById('sub-category-section').classList.remove('hidden');
+            document.getElementById('selected-cat-name').innerText = name;
+            const select = document.getElementById('subcat-select'), words = CSW24[cat];
+            select.innerHTML = '';
+            
+            if (cat === 'Bingo') {
+                Object.keys(CSW24.Bingo).forEach(stem => { const opt = document.createElement('option'); opt.value = stem; opt.innerText = stem; select.appendChild(opt); });
+            } else {
+                const newAdditions = { "3": ["UWU","PWN","VOG","VOM","YEZ","XED","VAG","UMU","TAI","QIN"], "4": ["CHIZ","YEET","MPOX","VOMS","VAXX","VLOG","VOIP","WAQF","YAGE","ZEXE"] };
+                let html = `<option value="All">All (${words.length})</option>`;
+                if (newAdditions[cat]) html += `<option value="CSW24">✨ CSW24 New</option>`;
+                html += `<option value="Heavy">Heavy (J,Q,X,Z)</option>`;
+                const counts = {}; words.forEach(w => counts[w[0]] = (counts[w[0]] || 0) + 1);
+                Object.keys(counts).sort().forEach(l => { html += `<option value="${l}">${l} (${counts[l]})</option>`; });
+                select.innerHTML = html;
+            }
+        }
+
+        function getWordSelection() {
+            const sub = document.getElementById('subcat-select').value, all = CSW24[currentCategory];
+            if (currentCategory === 'Bingo') return [...CSW24.Bingo[sub]];
+            if (sub === 'CSW24') { 
+                const list = { "3": ["UWU","PWN","VOG","VOM","YEZ","XED","VAG","UMU","TAI","QIN"], "4": ["CHIZ","YEET","MPOX","VOMS","VAXX","VLOG","VOIP","WAQF","YAGE","ZEXE"] };
+                return all.filter(w => list[currentCategory].includes(w));
+            }
+            if (sub === 'All') return [...all];
+            if (sub === 'Heavy') return all.filter(w => /[JQXZ]/.test(w));
+            return all.filter(w => w[0] === sub);
+        }
+
+        function startGame() { 
+            wordListPool = getWordSelection(); 
+            score = 0; streak = 0; solvedTileSets = 0; sessionHistory = []; 
+            showScreen('game'); 
+            nextWord(); 
+        }
+
+        function nextWord() {
+            if (currentBaseWord) sessionHistory.push({ rack: currentBaseWord.split('').sort().join(''), all: [...allAnagrams], found: [...foundWords] });
+            if (wordListPool.length === 0) return endGame();
+            
+            const idx = Math.floor(Math.random() * wordListPool.length);
+            currentBaseWord = wordListPool.splice(idx, 1)[0];
+            const master = (currentCategory === 'Bingo') ? CSW24.Bingo[document.getElementById('subcat-select').value] : CSW24[currentCategory];
+            
+            allAnagrams = master.filter(w => w.split('').sort().join('') === currentBaseWord.split('').sort().join(''));
+            allAnagrams = [...new Set(allAnagrams)];
+
+            foundWords = []; isRevealedMode = false;
+            renderTiles(currentBaseWord); renderFoundWords(); updateUI(); startTimer();
+            
+            document.getElementById('answer-input').value = ''; 
+            document.getElementById('answer-input').disabled = false; 
+            document.getElementById('answer-input').focus(); 
+            document.getElementById('feedback').innerText = '';
+        }
+
+        function renderTiles(word) {
+            const container = document.getElementById('tile-display'); container.innerHTML = '';
+            word.split('').sort(() => Math.random() - 0.5).forEach(char => {
+                const div = document.createElement('div'); div.className = 'scrabble-tile shadow-sm'; div.dataset.letter = char;
+                div.innerHTML = `${char}<span class="tile-value">${scrabblePoints[char]||0}</span>`; container.appendChild(div);
+            });
+        }
+
+        function renderFoundWords() {
+            const container = document.getElementById('found-words-list'); container.innerHTML = '';
+            allAnagrams.forEach(w => {
+                const span = document.createElement('span');
+                if (foundWords.includes(w)) { span.className = 'found-word-tag'; span.innerText = w; }
+                else if (isRevealedMode) { span.className = 'missing-word-tag'; span.innerText = w; }
+                else { span.className = 'inline-block px-4 py-1.5 m-1 bg-white border-2 border-gray-200 rounded-full text-[12px] text-gray-300 font-black shadow-sm'; span.innerText = '?'.repeat(w.length); }
+                container.appendChild(span);
+            });
+        }
+
+        function updateTileColors() {
+            const input = document.getElementById('answer-input');
+            if (!input) return;
+            const typed = input.value.toUpperCase().split('');
+            const tiles = Array.from(document.querySelectorAll('#tile-display .scrabble-tile'));
+            
+            tiles.forEach(t => t.classList.remove('used'));
+            typed.forEach(char => {
+                const availableTile = tiles.find(t => t.dataset.letter === char && !t.classList.contains('used'));
+                if (availableTile) availableTile.classList.add('used');
+            });
+        }
+
+        function checkAnswer() {
+            if (isPaused) return;
+            const input = document.getElementById('answer-input'), val = input.value.toUpperCase().trim(), fb = document.getElementById('feedback');
+            if (allAnagrams.includes(val) && !foundWords.includes(val)) {
+                streak++;
+                
+                // Calculate word score based on actual Scrabble letter values
+                let wordScore = val.split('').reduce((sum, char) => sum + (scrabblePoints[char] || 0), 0);
+                let earned = wordScore * streak;
+                
+                foundWords.push(val); score += earned; 
+                fb.innerText = `Nice! +${earned}` + (streak > 1 ? ` (${streak}x Streak!)` : ""); 
+                fb.className = "text-emerald-500 font-black";
+                input.value = ''; renderFoundWords(); updateUI(); updateTileColors();
+                
+                if (foundWords.length === allAnagrams.length) { 
+                    solvedTileSets++; 
+                    clearInterval(timerInterval); 
+                    setTimeout(nextWord, 1000); 
+                } else {
+                    startTimer(); // Reset timer when a word is answered correctly!
+                }
+            } else {
+                streak = 0;
+                score = Math.max(0, score - 2); 
+                fb.innerText = "Nope! -2 pts (Streak lost)"; fb.className = "text-rose-500 font-black";
+                input.parentElement.classList.add('shake'); setTimeout(() => input.parentElement.classList.remove('shake'), 500);
+                updateUI();
+            }
+        }
+
+        function startTimer() {
+            clearInterval(timerInterval); 
+            // 20 seconds flat for the entire Bingo round, 15s for 4-letter, 12s for everything else
+            maxTime = currentCategory === 'Bingo' ? 20 : (currentCategory === '4' ? 15 : 12);
+            timeLeft = maxTime; 
+            
+            // Snap the timer bar back to full without animation delay
+            const timerBar = document.getElementById('timer-bar');
+            timerBar.classList.remove('timer-bar-transition');
+            timerBar.style.width = '100%';
+            
+            // Restore animation class
+            setTimeout(() => {
+                timerBar.classList.add('timer-bar-transition');
+            }, 20);
+
+            timerInterval = setInterval(() => { 
+                if (!isPaused) { 
+                    timeLeft--; 
+                    updateTimerUI(); 
+                    if (timeLeft <= 0) { 
+                        clearInterval(timerInterval); 
+                        revealAnswers(); 
+                    } 
+                } 
+            }, 1000);
+        }
+
+        function updateTimerUI() { document.getElementById('timer-bar').style.width = (timeLeft / maxTime * 100) + '%'; }
+
+        function revealAnswers() { isRevealedMode = true; streak = 0; renderFoundWords(); document.getElementById('answer-input').disabled = true; setTimeout(nextWord, 3000); }
+        function togglePause() { isPaused = !isPaused; document.getElementById('pause-overlay').classList.toggle('hidden', !isPaused); }
+        
+        function exitToHome() { 
+            clearInterval(timerInterval); 
+            if (currentBaseWord) {
+                sessionHistory.push({ rack: currentBaseWord.split('').sort().join(''), all: [...allAnagrams], found: [...foundWords] });
+                currentBaseWord = ""; 
+            }
+            endGame(); 
+        }
+
+        function updateUI() { 
+            document.getElementById('score').innerText = score; 
+            document.getElementById('progress-display').innerText = `${foundWords.length} / ${allAnagrams.length}`; 
+        }
+
+        function endGame() {
+            clearInterval(timerInterval); 
+            
+            // A don ad sef-chek ya so di kod no go kresh (Added safety checks to prevent crashes)
+            if (document.getElementById('final-score')) document.getElementById('final-score').innerText = score; 
+            if (document.getElementById('final-solved')) document.getElementById('final-solved').innerText = solvedTileSets;
+            
+            let totalT = 0, totalF = 0;
+            sessionHistory.forEach(i => { totalT += i.all.length; totalF += i.found.length; });
+            if (document.getElementById('final-accuracy')) document.getElementById('final-accuracy').innerText = (totalT > 0 ? Math.round((totalF / totalT) * 100) : 0) + '%';
+
+            if (sessionHistory.length > 0) document.getElementById('study-sheet-btn').classList.remove('hidden');
+            showScreen('result');
+        }
+
+        function showStudySheet() {
+            const content = document.getElementById('study-content'); content.innerHTML = '';
+            sessionHistory.forEach(item => {
+                const div = document.createElement('div'); div.className = "bg-white p-4 rounded-2xl shadow-sm border-2 border-gray-100";
+                div.innerHTML = `<div class="text-[10px] text-gray-400 font-black uppercase tracking-widest mb-2">Tiles: ${item.rack}</div><div class="flex flex-wrap gap-2">${item.all.map(w => `<span class="${item.found.includes(w) ? 'text-emerald-500' : 'text-rose-500 underline'} font-black text-lg">${w}</span>`).join('')}</div>`;
+                content.appendChild(div);
+            });
+            document.getElementById('study-modal').classList.remove('hidden');
+        }
+
+        function closeStudySheet() { document.getElementById('study-modal').classList.add('hidden'); }
+        function resetApp() { goToSetup(); backToCategories(); }
+        function skipWord() { clearInterval(timerInterval); streak = 0; score = Math.max(0, score - 2); updateUI(); revealAnswers(); }
+        function useHint() { const m = allAnagrams.find(w => !foundWords.includes(w)); if (m) { document.getElementById('answer-input').value = m[0]; streak = 0; score = Math.max(0, score - 2); updateUI(); updateTileColors(); } }
+        
+        document.getElementById('answer-input').addEventListener('input', updateTileColors);
+        document.getElementById('answer-input').addEventListener('keypress', e => { if (e.key === 'Enter') checkAnswer(); });
+        window.onload = () => showScreen('welcome');
+    </script>
+</body>
+</html>
